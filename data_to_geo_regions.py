@@ -10,7 +10,8 @@ censo["dt_year"] = censo["dt_year"].astype(float)
 censo["codmun_ibge"] = censo["codmun_ibge"].astype(float)
 censo["idosos"] = censo["pop_expandida"] * censo["tx_65_anos"]
 censo["pop_ativa"] = censo["pop_expandida"] * censo["tx_pop_ativa"]
-censo["razao_dependencia_idosos"] = censo["idosos"] / censo["pop_ativa"]
+censo["criancas"] = censo["pop_expandida"] * censo["tx_14_anos"]
+#censo["razao_dependencia_idosos"] = censo["idosos"] / censo["pop_ativa"]
 
 estban = estban[['dt_year', 'CODMUN_IBGE', 'AGEN_PROCESSADAS', 'VERBETE_420_DEPOSITOS_DE_POUPANCA', 'VERBETE_432_DEPOSITOS_A_PRAZO']].copy()
 estban.rename(columns={"CODMUN_IBGE": "codmun_ibge", "AGEN_PROCESSADAS": "agen_processadas", "VERBETE_420_DEPOSITOS_DE_POUPANCA": "depositos_poupanca", "VERBETE_432_DEPOSITOS_A_PRAZO": "depositos_prazo"}, inplace=True)
@@ -22,7 +23,7 @@ df_merged = pd.merge(df_merged, dicionario, on="codmun_ibge", how="left")
 
 columns = ['sexo', 'idade', 'raca', 'branco',
        'anos_mor_mun', 'nasceu_mun', 'anos_estudoC', 'filhos_tot',
-       'filhos_nasc_vivos', 'vive_conjuge', 'estado_conj', 'tx_casado', 'tx_65_anos', 'tx_pop_ativa', 'tx_14_anos', 'sit_setor_C', 'razao_dependencia_idosos', 'cond_ocup_B', 'ocup_propria',
+       'filhos_nasc_vivos', 'vive_conjuge', 'estado_conj', 'tx_casado', 'sit_setor_C', 'cond_ocup_B', 'ocup_propria',
        'especie', 'ilum_eletr', 'lavaroupa', 'n_pes_dom', 'sanitario',
        ]
 
@@ -33,6 +34,9 @@ df_reg_imediata = df_merged.groupby(['dt_year', 'id_regiao',
            pop_expandida_micro=("pop_expandida", "sum"),
            individuos_amostrados=("individuos_amostrados", "sum"),
            agen_processadas=("agen_processadas", "sum"),
+           idosos=("idosos", "sum"),
+           pop_ativa=("pop_ativa", "sum"),
+           criancas=("criancas", "sum"),
            depositos_poupanca=("depositos_poupanca", "sum"),
            depositos_prazo=("depositos_prazo", "sum"),
            depositos_totais=("depositos_totais", "sum"),
@@ -42,6 +46,9 @@ df_reg_imediata = df_merged.groupby(['dt_year', 'id_regiao',
            conversor=("conversor", "first"),
         **{var: (var, lambda g: (g * df_merged.loc[g.index, "pop_expandida"]).sum() / df_merged.loc[g.index, "pop_expandida"].sum()) for var in columns}
        )
+
+df_reg_imediata["razao_dependencia_idosos"] = df_reg_imediata["idosos"] / df_reg_imediata["pop_ativa"]
+df_reg_imediata["razao_dependencia_infantil"] = df_reg_imediata["criancas"] / df_reg_imediata["pop_ativa"]
 
 df_reg_imediata["renda_dom_deflacionada"] = df_reg_imediata["renda_dom"] / df_reg_imediata["deflator"] / df_reg_imediata["conversor"]
 df_reg_imediata["depositos_poupanca_deflacionada"] = df_reg_imediata["depositos_poupanca"] / df_reg_imediata["deflator"] / df_reg_imediata["conversor"]
