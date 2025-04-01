@@ -22,7 +22,8 @@ class MDR:
             "sanitario",
             "renda_dom",
             "deflator",
-            "conversor"
+            "conversor",
+            "peso_dom"
         ]
         
         self.PES_COLUMNS = [
@@ -38,14 +39,15 @@ class MDR:
             "filhos_nasc_vivos",
             "t_mor_mun_80",
             "vive_conjuge",
-            "estado_conj"
+            "estado_conj",
+            "peso_pess"
         ]
 
-    def load_microdata(self, year: str, file_type: str) -> pd.DataFrame:
+    def load_microdata(self, year: str, file_type: str, columns: list) -> pd.DataFrame:
         """Carrega os dados de um determinado ano e tipo"""
         file_path = f"microdados/{year}/CENSO{str(year)[-2:]}_BR_{file_type}_comp.dta"
         try:
-            return pd.read_stata(file_path)
+            return pd.read_stata(file_path, columns=columns)
         except FileNotFoundError:
             raise FileNotFoundError(f"File not Found: {file_path}")
 
@@ -55,14 +57,28 @@ class MDR:
 
         for year in self.YEARS:
 
-            pes = self.load_microdata(year, "pes")
-            dom = self.load_microdata(year, "dom")
+            pes = self.load_microdata(year, "pes", self.PES_COLUMNS)
+            dom = self.load_microdata(year, "dom", self.DOM_COLUMNS)
 
-            pes = pes[self.PES_COLUMNS].copy()
-            dom = dom[self.DOM_COLUMNS].copy()
+            pes["65_anos"] = (pes["idade"] >= 65).astype(int)
+            pes["casado"] = (pes["estado_conj"].isin([1, 2, 3, 4])).astype(int)
 
-            pes_mun = pes.groupby(["ano", "UF", "munic"], as_index=False).mean(numeric_only=True)
-            dom_mun = dom.groupby(["ano", "UF", "munic"], as_index=False).mean(numeric_only=True)
+            pes_vars = ["sexo", "idade", "raca", "anos_mor_mun", "anos_estudoC", "filhos_tot", "filhos_nasc_vivos", "vive_conjuge", "estado_conj", "65_anos", "casado"]
+            dom_vars = ["sit_setor_C", "especie", "ilum_eletr", "lavaroupa", "n_pes_dom", "sanitario", "renda_dom"]
+
+            # Agrupamento para tabela de pessoas
+            pes_mun = pes.groupby(["ano", "UF", "munic"], as_index=False).agg(
+            pop_expandida=("peso_pess", "sum"),
+            individuos_amostrados=("peso_pess", "count"),
+            **{var: (var, lambda g: (g * pes.loc[g.index, "peso_pess"]).sum() / pes.loc[g.index, "peso_pess"].sum()) for var in pes_vars}
+            )
+
+            # Agrupamento para tabela de domicílios
+            dom_mun = dom.groupby(["ano", "UF", "munic"], as_index=False).agg(
+            deflator=("deflator", "first"),
+            conversor=("conversor", "first"),
+            **{var: (var, lambda g: (g * dom.loc[g.index, "peso_dom"]).sum() / dom.loc[g.index, "peso_dom"].sum()) for var in dom_vars}
+            )
 
             censo = pd.merge(pes_mun, dom_mun, on=["ano", "UF", "munic"])
 
