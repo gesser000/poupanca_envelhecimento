@@ -32,5 +32,6 @@ for year in years:
         estban["dt_year"] = estban["#DATA_BASE"].astype(str).str[0:4]
         estban_all.append(estban)
         
-    estban_full = pd.concat(estban_all)
-    estban_groupby = estban_full.groupby(["dt_year", "UF", "MUNICIPIO", "CODMUN_IBGE"], as_index=False).mean(numeric_only=True)
+estban_full = pd.concat(estban_all)
+estban_groupby = estban_full.groupby(["dt_year", "UF", "MUNICIPIO", "CODMUN_IBGE"], as_index=False).mean(numeric_only=True)
+estban_groupby.to_parquet("estban/refined/estban_refined.gzip", compression="gzip")
