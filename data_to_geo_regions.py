@@ -17,6 +17,7 @@ estban = estban[['dt_year', 'CODMUN_IBGE', 'AGEN_PROCESSADAS', 'VERBETE_420_DEPO
 estban.rename(columns={"CODMUN_IBGE": "codmun_ibge", "AGEN_PROCESSADAS": "agen_processadas", "VERBETE_420_DEPOSITOS_DE_POUPANCA": "depositos_poupanca", "VERBETE_432_DEPOSITOS_A_PRAZO": "depositos_prazo"}, inplace=True)
 estban["depositos_totais"] = estban["depositos_poupanca"] + estban["depositos_prazo"]
 estban["dt_year"] = estban["dt_year"].astype(float)
+estban["dt_year"] = estban["dt_year"] - 1
 
 df_merged = pd.merge(censo, estban, on=["dt_year", "codmun_ibge"], how="left")
 df_merged = pd.merge(df_merged, dicionario, on="codmun_ibge", how="left")
